@@ -1,21 +1,35 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { supabase } from '$lib/supabaseClient';
 import type { Actions } from './$types';
+import { db } from '$lib/server/db';
+import { notes } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 
 export const actions: Actions = {
-	default: async ({ locals: { supabase } }) => {
-		const { error } = await supabase.auth.signOut();
+	saveNote: async ({ request, locals: { supabase } }) => {
+		const formData = await request.formData();
+		const content = formData.get('content');
+		const title = formData.get('title');
 
-		if (error) {
-			return fail(400, {
-				error: error.message
-			});
+		const {
+			data: { user },
+			error: userError
+		} = await supabase.auth.getUser();
+
+		if (userError || !user) {
+			throw redirect(302, '/');
 		}
 
-		throw redirect(303, '/login');
+		const { error } = await supabase.from('notes').insert({
+			content: content,
+			title: title,
+			userid: user.id
+		});
+		if (error) {
+			console.error('Error signing out:', error.message);
+		}
 	},
-	signOut: async ({ locals: { supabase } }) => {
+	signout: async ({ locals: { supabase } }) => {
 		const { error } = await supabase.auth.signOut();
 
 		if (error) {
@@ -24,7 +38,7 @@ export const actions: Actions = {
 			});
 		}
 
-		throw redirect(303, '/');
+		throw redirect(302, '/');
 	}
 };
 
@@ -41,13 +55,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 async function getNotes(userId: string) {
-	console.log('lol', userId);
-	const { data, error } = await supabase.from('notes').select('*').eq('userid', userId); // 👈 filter by userId
-
-	if (error) {
-		console.error('Error fetching notes:', error.message);
+	try {
+		const data = await db.select().from(notes).where(eq(notes.userid, userId));
+		return data;
+	} catch (err) {
+		console.error('Error fetching notes:', err);
 		return [];
 	}
-
-	return data;
 }
