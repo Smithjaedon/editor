@@ -6,6 +6,7 @@ export const notes = pgTable('notes', {
 	title: text('title').default('Untitled'),
 	content: text('content'),
 	createdAt: timestamp('created_at').defaultNow(),
+	modifiedAt: timestamp('modified_at').defaultNow(),
 
 	userid: uuid('userid')
 		.notNull()

@@ -1,21 +1,24 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { invalidate } from '$app/navigation';
 	import {
 		Trash2,
 		AlignCenter,
 		AlignLeft,
 		AlignRight,
 		AlignJustify,
-		CircleUserRound
+		CircleUserRound,
+		SquarePlus
 	} from 'lucide-svelte';
 
 	import { marked } from 'marked';
 	import { onDestroy, onMount } from 'svelte';
 
-	let content = $state('');
-	let preview = $state('');
-
 	const { data } = $props();
-	const { notes } = data;
+	const { notes, note } = data;
+
+	let content = $state<string>('');
+	let preview = $state('');
 
 	function handleSubmit(event: SubmitEvent) {
 		const form = event.target as HTMLFormElement;
@@ -25,13 +28,24 @@
 		}
 	}
 
-	$effect(() => {
+	function taketo(id: string) {
+		goto(`/editor/${id}`);
+	}
+
+	function updatePreview() {
+		if (!content) {
+			preview = '';
+			return;
+		}
 		preview = content;
 		renderColorSyntax();
 		renderAlignmentSyntax();
-	});
+	}
 
 	onMount(() => {
+		content = note?.content as string;
+		updatePreview();
+
 		const handleKey = (e: KeyboardEvent) => {
 			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
 				e.preventDefault();
@@ -91,7 +105,7 @@
 		}
 
 		content = txtarea.value;
-		preview = content;
+		updatePreview();
 	}
 
 	function applyStart(wrapper: string) {
@@ -121,10 +135,14 @@
 		}
 
 		content = txtarea.value;
-		preview = content;
+		updatePreview();
 	}
 
 	function renderColorSyntax() {
+		if (!content) {
+			preview = '';
+			return;
+		}
 		preview = content.replace(/\{([^}]+)\}(.*?)\{\/\1\}/g, (match, type, content) => {
 			if (['left', 'center', 'right', 'justify'].includes(type)) {
 				return match;
@@ -169,7 +187,7 @@
 		txtarea.selectionStart = start;
 		txtarea.selectionEnd = start + selected.length;
 		content = txtarea.value;
-		renderColorSyntax();
+		updatePreview();
 	}
 
 	function applyAlign(align: string) {
@@ -197,11 +215,11 @@
 		txtarea.value = `${before}${selected}${after}`;
 		txtarea.selectionStart = start;
 		txtarea.selectionEnd = start + selected.length;
-		content = txtarea.value;
+		updatePreview();
 	}
 </script>
 
-<form action="?/saveNote" method="POST" class="h-full" onsubmit={handleSubmit}>
+<form action="?/editNote" method="POST" class="h-full" onsubmit={handleSubmit}>
 	<div class="grid grid-rows-[61px_3rem_1fr]">
 		<div class="navbar bg-base-300 sticky top-0 z-10 w-screen shadow-md">
 			<div class="navbar-start">
@@ -232,9 +250,15 @@
 				</div>
 			</div>
 			<div class="navbar-center">
-				<a class="btn btn-ghost text-xl">GlyphNote</a>
+				<a class="btn btn-ghost text-xl" href="/editor">GlyphNote</a>
 			</div>
 			<div class="navbar-end">
+				<a class="btn btn-ghost" href="/editor">
+					<div class="flex items-center justify-center gap-x-2">
+						<SquarePlus />
+						Add Note
+					</div>
+				</a>
 				<div class="dropdown dropdown-end">
 					<div tabindex="0" role="button" class="btn btn-ghost btn-circle m-1">
 						<CircleUserRound />
@@ -253,7 +277,7 @@
 		<div class="bg-base-200 h-full shadow-sm">
 			<ul class="menu menu-horizontal bg-base-200 rounded-box">
 				<li>
-					<input class="input h-8" type="text" name="title" />
+					<input class="input h-8" type="text" name="title" value={note?.title} />
 				</li>
 				<li>
 					<button type="button" popovertarget="popover-2" style="anchor-name:--anchor-2">
@@ -317,6 +341,7 @@
 
 						<textarea
 							id="right"
+							name="content"
 							bind:value={content}
 							class="textarea textarea-ghost h-full w-full resize-none focus:border-transparent focus:ring-0 focus:outline-none"
 						></textarea>

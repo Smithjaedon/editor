@@ -2,3 +2,24 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 @plugin 'daisyui';
+
+/* List styles */
+.list {
+	@apply flex flex-col gap-2;
+}
+
+.list-row {
+	@apply hover:bg-base-200 flex items-center gap-4 p-4 transition-colors;
+}
+
+.list-col-grow {
+	@apply min-w-0 flex-1;
+}
+
+.list-col-grow > div:first-child {
+	@apply truncate;
+}
+
+.list-col-grow > div:last-child {
+	@apply truncate;
+}
