@@ -1,15 +1,19 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { Actions } from './$types';
 import { db } from '$lib/server/db';
 import { notes } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 export const actions: Actions = {
 	saveNote: async ({ request, locals: { supabase } }) => {
 		const formData = await request.formData();
 		const content = formData.get('content');
 		const title = formData.get('title');
+		let titleString = title as string;
+		if (!titleString) {
+			titleString = 'Untitled';
+		}
 
 		const {
 			data: { user },
@@ -20,13 +24,17 @@ export const actions: Actions = {
 			throw redirect(302, '/');
 		}
 
-		const { error } = await supabase.from('notes').insert({
-			content: content,
-			title: title,
-			userid: user.id
-		});
-		if (error) {
-			console.error('Error signing out:', error.message);
+		try {
+			await db.insert(notes).values({
+				content: content as string,
+				title: titleString,
+				userid: user.id
+			});
+		} catch (err) {
+			console.error('Error saving note:', err);
+			return fail(400, {
+				error: 'Failed to save note'
+			});
 		}
 	},
 	signout: async ({ locals: { supabase } }) => {
@@ -39,6 +47,28 @@ export const actions: Actions = {
 		}
 
 		throw redirect(302, '/');
+	},
+	deleteNote: async ({ request, locals: { supabase } }) => {
+		const formData = await request.formData();
+		const noteId = formData.get('noteId');
+
+		const {
+			data: { user },
+			error: userError
+		} = await supabase.auth.getUser();
+
+		if (userError || !user) {
+			throw redirect(302, '/');
+		}
+
+		try {
+			await db.delete(notes).where(and(eq(notes.id, noteId as string), eq(notes.userid, user.id)));
+		} catch (err) {
+			console.error('Error deleting note:', err);
+			return fail(400, {
+				error: 'Failed to delete note'
+			});
+		}
 	}
 };
 

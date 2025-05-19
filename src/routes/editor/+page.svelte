@@ -1,32 +1,374 @@
 <script lang="ts">
+	import {
+		Trash2,
+		AlignCenter,
+		AlignLeft,
+		AlignRight,
+		AlignJustify,
+		CircleUserRound
+	} from 'lucide-svelte';
+
+	import { marked } from 'marked';
+	import { onDestroy, onMount } from 'svelte';
+
 	let content = $state('');
+	let preview = $state('');
+
 	const { data } = $props();
 	const { notes } = data;
+
+	function handleSubmit(event: SubmitEvent) {
+		const form = event.target as HTMLFormElement;
+		const submitter = event.submitter as HTMLButtonElement;
+		if (submitter?.type !== 'submit') {
+			event.preventDefault();
+		}
+	}
+
+	$effect(() => {
+		preview = content;
+		renderColorSyntax();
+		renderAlignmentSyntax();
+	});
+
+	onMount(() => {
+		const handleKey = (e: KeyboardEvent) => {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+				e.preventDefault();
+				applyWrapper('**');
+			}
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
+				e.preventDefault();
+				applyWrapper('*');
+			}
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+				e.preventDefault();
+				applyWrapper('~~');
+			}
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+				e.preventDefault();
+				applyWrapper('`');
+			}
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+				e.preventDefault();
+				applyWrapper('==');
+			}
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'q') {
+				e.preventDefault();
+				applyStart('> ');
+			}
+		};
+		window.addEventListener('keydown', handleKey);
+
+		onDestroy(() => {
+			window.removeEventListener('keydown', handleKey);
+		});
+	});
+
+	function applyWrapper(wrapper: string) {
+		const txtarea = document.getElementById('right') as HTMLTextAreaElement;
+		if (!content) return;
+
+		const start = txtarea.selectionStart;
+		const end = txtarea.selectionEnd;
+		let selected = txtarea.value.slice(start, end);
+
+		const before = txtarea.value.slice(0, start);
+		const after = txtarea.value.slice(end);
+
+		const wrapperLength = wrapper.length;
+		const isWrapped = selected.startsWith(wrapper) && selected.endsWith(wrapper);
+
+		if (isWrapped) {
+			selected = selected.slice(wrapperLength, -wrapperLength);
+			txtarea.value = `${before}${selected}${after}`;
+			txtarea.selectionStart = start;
+			txtarea.selectionEnd = end - 2 * wrapperLength;
+		} else {
+			txtarea.value = `${before}${wrapper}${selected}${wrapper}${after}`;
+			txtarea.selectionStart = start;
+			txtarea.selectionEnd = end + 2 * wrapperLength;
+		}
+
+		content = txtarea.value;
+		preview = content;
+	}
+
+	function applyStart(wrapper: string) {
+		const txtarea = document.getElementById('right') as HTMLTextAreaElement;
+
+		if (!content) return;
+
+		const start = txtarea.selectionStart;
+		const end = txtarea.selectionEnd;
+		let selected = txtarea.value.slice(start, end);
+
+		const before = txtarea.value.slice(0, start);
+		const after = txtarea.value.slice(end);
+
+		const wrapperLength = wrapper.length;
+		const isWrapped = selected.startsWith(wrapper);
+
+		if (isWrapped) {
+			selected = selected.slice(wrapperLength);
+			txtarea.value = `${before}${selected}${after}`;
+			txtarea.selectionStart = start;
+			txtarea.selectionEnd = end - wrapperLength;
+		} else {
+			txtarea.value = `${before}${wrapper}${selected}${after}`;
+			txtarea.selectionStart = start + wrapperLength;
+			txtarea.selectionEnd = end + wrapperLength;
+		}
+
+		content = txtarea.value;
+		preview = content;
+	}
+
+	function renderColorSyntax() {
+		preview = content.replace(/\{([^}]+)\}(.*?)\{\/\1\}/g, (match, type, content) => {
+			if (['left', 'center', 'right', 'justify'].includes(type)) {
+				return match;
+			}
+			return `<span style="color: ${type};">${content}</span>`;
+		});
+	}
+
+	function renderAlignmentSyntax() {
+		preview = preview.replace(/\{([^}]+)\}(.*?)\{\/\1\}/g, (match, type, content) => {
+			if (['left', 'center', 'right', 'justify'].includes(type)) {
+				return `<div style="text-align: ${type};">${content}</div>`;
+			}
+			return match;
+		});
+	}
+
+	function applyColor(color: string) {
+		const txtarea = document.getElementById('right') as HTMLTextAreaElement;
+
+		if (!content) return;
+
+		const start = txtarea.selectionStart;
+		const end = txtarea.selectionEnd;
+		let selected = txtarea.value.slice(start, end);
+
+		const colorWrapper = `{${color}}`;
+		const colorCloser = `{/${color}}`;
+
+		const before = txtarea.value.slice(0, start);
+		const after = txtarea.value.slice(end);
+
+		const colorRegex = new RegExp(`{${color}}(.*?){/${color}}`);
+		if (colorRegex.test(selected)) {
+			selected = selected.replace(colorRegex, '$1');
+		} else {
+			selected = selected.replace(new RegExp(`\\{${color}\\}(.*?)\\{/${color}\\}`, 'g'), '$1');
+			selected = `${colorWrapper}${selected}${colorCloser}`;
+		}
+
+		txtarea.value = `${before}${selected}${after}`;
+		txtarea.selectionStart = start;
+		txtarea.selectionEnd = start + selected.length;
+		content = txtarea.value;
+		renderColorSyntax();
+	}
+
+	function applyAlign(align: string) {
+		const txtarea = document.getElementById('right') as HTMLTextAreaElement;
+
+		if (!content) return;
+
+		const start = txtarea.selectionStart;
+		const end = txtarea.selectionEnd;
+		let selected = txtarea.value.slice(start, end);
+
+		const alignWrapper = `{${align}}`;
+		const alignCloser = `{/${align}}`;
+
+		const before = txtarea.value.slice(0, start);
+		const after = txtarea.value.slice(end);
+
+		const alignRegex = new RegExp(`\\{${align}\\}(.*?)\\{/${align}\\}`);
+		if (alignRegex.test(selected)) {
+			selected = selected.replace(alignRegex, '$1');
+		} else {
+			selected = `${alignWrapper}${selected}${alignCloser}`;
+		}
+
+		txtarea.value = `${before}${selected}${after}`;
+		txtarea.selectionStart = start;
+		txtarea.selectionEnd = start + selected.length;
+		content = txtarea.value;
+	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center">
-	<div class="flex max-w-md flex-col items-center justify-center space-y-2">
-		<div>
-			{#if notes}
-				{#each notes as note}
-					<div class="mb-2">{note.title}</div>
-				{/each}
-			{/if}
+<form action="?/saveNote" method="POST" class="h-full" onsubmit={handleSubmit}>
+	<div class="grid grid-rows-[61px_3rem_1fr]">
+		<div class="navbar bg-base-300 sticky top-0 z-10 w-screen shadow-md">
+			<div class="navbar-start">
+				<div class="dropdown">
+					<div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M4 6h16M4 12h16M4 18h7"
+							/>
+						</svg>
+					</div>
+					<ul
+						tabindex="0"
+						class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow"
+					>
+						<li><button type="button" popovertarget="my-popover">Open</button></li>
+						<li><button type="submit" class="w-full text-left">Save</button></li>
+					</ul>
+				</div>
+			</div>
+			<div class="navbar-center">
+				<a class="btn btn-ghost text-xl">GlyphNote</a>
+			</div>
+			<div class="navbar-end">
+				<div class="dropdown dropdown-end">
+					<div tabindex="0" role="button" class="btn btn-ghost btn-circle m-1">
+						<CircleUserRound />
+					</div>
+					<ul
+						tabindex="0"
+						class="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm"
+					>
+						<li>
+							<button type="submit" class="w-full text-left" form="signout-form">Sign Out</button>
+						</li>
+					</ul>
+				</div>
+			</div>
 		</div>
-		<form action="?/saveNote" method="post">
-			<label for="title" class="text-lg font-semibold">Title</label>
-			<input type="text" name="title" id="title" class="mb-3 w-md" />
-			<label for="content" class="text-lg font-semibold">Content</label>
-			<textarea id="content" name="content" class="h-50 min-w-md" bind:value={content}></textarea>
+		<div class="bg-base-200 h-full shadow-sm">
+			<ul class="menu menu-horizontal bg-base-200 rounded-box">
+				<li>
+					<input class="input h-8" type="text" name="title" />
+				</li>
+				<li>
+					<button type="button" popovertarget="popover-2" style="anchor-name:--anchor-2">
+						Colors
+					</button>
+					<ul
+						class="dropdown menu rounded-box bg-base-100 w-52 shadow-sm"
+						popover
+						id="popover-2"
+						style="position-anchor:--anchor-2"
+					>
+						<li><a class="font-bold text-black" onclick={() => applyColor('black')}>black</a></li>
+						<li><a class="font-bold text-gray-500" onclick={() => applyColor('gray')}>gray</a></li>
+						<li><a class="font-bold text-red-500" onclick={() => applyColor('red')}>red</a></li>
+						<li>
+							<a class="font-bold text-orange-500" onclick={() => applyColor('orange')}>orange</a>
+						</li>
+						<li>
+							<a class="font-bold text-yellow-500" onclick={() => applyColor('yellow')}>yellow</a>
+						</li>
+						<li>
+							<a class="font-bold text-green-500" onclick={() => applyColor('green')}>green</a>
+						</li>
+						<li><a class="font-bold text-blue-500" onclick={() => applyColor('blue')}>blue</a></li>
+						<li>
+							<a class="font-bold text-purple-500" onclick={() => applyColor('purple')}>purple</a>
+						</li>
+						<li><a class="font-bold text-pink-500" onclick={() => applyColor('pink')}>pink</a></li>
+					</ul>
+				</li>
+				<li>
+					<button type="button" class="btn btn-ghost btn-sm" onclick={() => applyAlign('left')}>
+						<AlignLeft size={16} />
+					</button>
+				</li>
+				<li>
+					<button type="button" class="btn btn-ghost btn-sm" onclick={() => applyAlign('center')}>
+						<AlignCenter size={16} />
+					</button>
+				</li>
+				<li>
+					<button type="button" class="btn btn-ghost btn-sm" onclick={() => applyAlign('right')}>
+						<AlignRight size={16} />
+					</button>
+				</li>
+				<li>
+					<button type="button" class="btn btn-ghost btn-sm" onclick={() => applyAlign('justify')}>
+						<AlignJustify size={16} />
+					</button>
+				</li>
+			</ul>
+		</div>
+		<div class="bg-base-100 h-[calc(100vh-109px)]">
+			<div class="h-full">
+				<div class="h-full overflow-hidden">
+					<div id="window" class="grid h-full grid-cols-[1fr_auto_1fr]">
+						<div id="left" class="prose preview overflow-auto p-6">
+							{@html marked(preview)}
+						</div>
+						<div id="divider" class="divider divider-horizontal"></div>
 
-			<button class="w-sm rounded-md bg-neutral-900 px-4 py-2 text-white shadow-md"
-				>Save Note</button
-			>
-		</form>
-		<form action="?/signout" method="post">
-			<button class="w-xs rounded-md border-1 border-neutral-400 bg-neutral-200 px-4 py-2 shadow-md"
-				>Sign Out</button
-			>
-		</form>
+						<textarea
+							id="right"
+							bind:value={content}
+							class="textarea textarea-ghost h-full w-full resize-none focus:border-transparent focus:ring-0 focus:outline-none"
+						></textarea>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</form>
+<form id="signout-form" action="?/signout" method="POST" class="hidden"></form>
+<div
+	popover
+	id="my-popover"
+	class="bg-base-100 border-base-300 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg border p-6 shadow-xl"
+>
+	<div class="text-md mb-2 max-h-86 w-md max-w-lg overflow-scroll font-medium">
+		<div class="rounded-box border-base-content/5 bg-base-100 overflow-x-auto border">
+			<table class="table-pin-rows table-pin-cols table-xs table">
+				<!-- head -->
+				<thead>
+					<tr>
+						<th></th>
+						<th>Title</th>
+						<th>Created At</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					{#if notes}
+						{#each notes as note, i}
+							<tr>
+								<th>{i + 1}</th>
+								<td class="link link-primary">{note.title}</td>
+								<td>{note.createdAt?.toDateString()}</td>
+								<td>
+									<form action="?/deleteNote" method="POST" class="inline">
+										<input type="hidden" name="noteId" value={note.id} />
+										<button type="submit" class="btn btn-error flex-none">
+											<Trash2 size={12} />
+										</button>
+									</form>
+								</td>
+							</tr>
+						{/each}
+					{/if}
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<div class="mt-4 flex justify-end">
+		<button type="button" class="btn btn-sm" popovertarget="my-popover" popovertargetaction="hide"
+			>Close</button
+		>
 	</div>
 </div>
