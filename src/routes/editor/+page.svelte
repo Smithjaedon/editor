@@ -5,7 +5,10 @@
 		AlignLeft,
 		AlignRight,
 		AlignJustify,
-		CircleUserRound
+		CircleUserRound,
+		Bold,
+		Underline,
+		Italic
 	} from 'lucide-svelte';
 
 	import { marked } from 'marked';

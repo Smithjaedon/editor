@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { invalidate } from '$app/navigation';
 	import {
 		Trash2,
 		AlignCenter,
@@ -8,7 +7,10 @@
 		AlignRight,
 		AlignJustify,
 		CircleUserRound,
-		SquarePlus
+		SquarePlus,
+		Bold,
+		Underline,
+		Italic
 	} from 'lucide-svelte';
 
 	import { marked } from 'marked';
@@ -217,6 +219,35 @@
 		txtarea.selectionEnd = start + selected.length;
 		updatePreview();
 	}
+
+	function applyUnderline() {
+		const txtarea = document.getElementById('right') as HTMLTextAreaElement;
+
+		if (!content) return;
+
+		const start = txtarea.selectionStart;
+		const end = txtarea.selectionEnd;
+		let selected = txtarea.value.slice(start, end);
+
+		const before = txtarea.value.slice(0, start);
+		const after = txtarea.value.slice(end);
+
+		const underlineWrapper = '{underline}';
+		const underlineCloser = '{/underline}';
+
+		const underlineRegex = new RegExp(`${underlineWrapper}(.*?)${underlineCloser}`);
+		if (underlineRegex.test(selected)) {
+			selected = selected.replace(underlineRegex, '$1');
+		} else {
+			selected = `${underlineWrapper}${selected}${underlineCloser}`;
+		}
+
+		txtarea.value = `${before}${selected}${after}`;
+		txtarea.selectionStart = start;
+		txtarea.selectionEnd = start + selected.length;
+		content = txtarea.value;
+		updatePreview();
+	}
 </script>
 
 <form action="?/editNote" method="POST" class="h-full" onsubmit={handleSubmit}>
@@ -343,6 +374,7 @@
 							id="right"
 							name="content"
 							bind:value={content}
+							oninput={updatePreview}
 							class="textarea textarea-ghost h-full w-full resize-none focus:border-transparent focus:ring-0 focus:outline-none"
 						></textarea>
 					</div>
