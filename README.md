@@ -1,38 +1,42 @@
-# sv
+# GlyphNote
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+GlyphNote is a modern markdown-based note editor built with SvelteKit, Supabase, and ShadCN. It offers a clean split-view interface for writing and previewing markdown notes. The project focuses on speed, security, and extensibility with planned real-time collaboration features.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- Markdown Split View (edit + preview)
+- Authentication with Supabase
+- CRUD Notes (Create, Read, Update, Delete)
+- Styled with TailwindCSS and ShadCN UI
+- Secure server-side logic using form actions
+- Markdown rendering with `marked`
 
-```bash
-# create a new project in the current directory
-npx sv create
+## Why I Built This
 
-# create a new project in my-app
-npx sv create my-app
-```
+GlyphNote was built to explore how modern full-stack tools like SvelteKit, Supabase, and Drizzle can power a minimal note editor. It emphasizes a smooth writing experience, Markdown support, and server-first security.
 
-## Developing
+## What I Learned
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### 1. Server-Side Authentication
 
-```bash
-npm run dev
+I encountered challenges trying to move authentication logic from the client to the server. Using SvelteKit form actions allowed me to securely handle auth flows without exposing logic on the client.
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+### 2. Real-Time Functionality
 
-## Building
+Real-time syncing turned out to be more complex than expected. I'm currently working on a better approach using Supabase Realtime and structured state management.
 
-To create a production version of your app:
+## Tech Stack
 
-```bash
-npm run build
-```
+| Layer    | Tool                                 |
+| -------- | ------------------------------------ |
+| Frontend | SvelteKit, ShadCN, Tailwind          |
+| Backend  | Supabase (Auth + Database)           |
+| ORM      | Drizzle ORM                          |
+| Markdown | `marked` (in transition to `tiptap`) |
 
-You can preview the production build with `npm run preview`.
+## Features to be completed
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- Real-time collaboration
+- Auto Save
+- Working Undo Data Structure
+- Possible Rich Text Editing w/ TipTap
