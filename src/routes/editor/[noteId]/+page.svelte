@@ -1,37 +1,35 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import {
-		Trash2,
+		Text,
 		AlignCenter,
 		AlignLeft,
 		AlignRight,
 		AlignJustify,
 		CircleUserRound,
-		SquarePlus,
-		Bold,
-		Underline,
-		Italic
+		Menu,
+		Baseline
 	} from 'lucide-svelte';
 
+	import * as Menubar from '$lib/components/ui/menubar/index.js';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import { Separator } from '$lib/components/ui/separator/index.js';
+	import { Input } from '$lib/components/ui/input/index.js';
 	import { marked } from 'marked';
 	import { onDestroy, onMount } from 'svelte';
+
+	let content = $state('');
+	let preview = $state('');
+	let title = $state('');
 
 	const { data } = $props();
 	const { notes, note } = data;
 
-	let content = $state<string>('');
-	let preview = $state('');
-
 	function handleSubmit(event: SubmitEvent) {
 		const form = event.target as HTMLFormElement;
 		const submitter = event.submitter as HTMLButtonElement;
-		if (submitter?.type !== 'submit') {
+		if (submitter?.type !== 'submit' && !form.action.includes('saveNote')) {
 			event.preventDefault();
 		}
-	}
-
-	function taketo(id: string) {
-		goto(`/editor/${id}`);
 	}
 
 	function updatePreview() {
@@ -251,116 +249,92 @@
 </script>
 
 <form action="?/editNote" method="POST" class="h-full" onsubmit={handleSubmit}>
-	<div class="grid grid-rows-[61px_3rem_1fr]">
-		<div class="navbar bg-base-300 sticky top-0 z-10 w-screen shadow-md">
-			<div class="navbar-start">
-				<div class="dropdown">
-					<div tabindex="0" role="button" class="btn btn-ghost btn-circle">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-5 w-5"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
+	<div class="grid grid-rows-[61px_3rem_1fr] gap-0">
+		<Menubar.Root
+			class="mb-0 flex h-12 items-center justify-between rounded-none bg-neutral-300 px-4"
+		>
+			<Menubar.Menu>
+				<Menubar.Trigger><Menu /></Menubar.Trigger>
+				<Menubar.Content>
+					<Button href="/editor/add" variant="ghost" class="w-full">Open Note</Button>
+					<Button type="submit" variant={'ghost'} class="w-full" form="editnote-form"
+						>Save Note</Button
+					>
+				</Menubar.Content>
+			</Menubar.Menu>
+			<div class="text-2xl">
+				<Button variant="ghost" href="/editor">GlyphNote</Button>
+			</div>
+			<Menubar.Menu>
+				<Menubar.Trigger><CircleUserRound /></Menubar.Trigger>
+				<Menubar.Content>
+					<Button variant="ghost" type="submit" class="w-full text-left" form="signout-form"
+						>Sign Out</Button
+					>
+					<form id="signout-form" action="?/signout" method="POST" class="hidden"></form>
+				</Menubar.Content>
+			</Menubar.Menu>
+		</Menubar.Root>
+		<Menubar.Root class="mt-0">
+			<Input
+				type="text"
+				name="title"
+				placeholder="title..."
+				class="h-8 max-w-3xs rounded-md"
+				bind:value={title}
+			/>
+			<Menubar.Menu>
+				<Menubar.Trigger><Baseline /></Menubar.Trigger>
+				<Menubar.Content>
+					<Menubar.Item onclick={() => applyColor('black')} class="text-font text-black"
+						>Black</Menubar.Item
+					>
+					<Menubar.Item onclick={() => applyColor('gray')} class="text-font text-gray-500"
+						>Gray</Menubar.Item
+					>
+					<Menubar.Item onclick={() => applyColor('red')} class="text-font text-red-500"
+						>Red</Menubar.Item
+					>
+					<Menubar.Item onclick={() => applyColor('orange')} class="text-font text-orange-500"
+						>Orange</Menubar.Item
+					>
+					<Menubar.Item onclick={() => applyColor('yellow')} class="text-font text-yellow-500"
+						>Yellow</Menubar.Item
+					>
+					<Menubar.Item onclick={() => applyColor('green')} class="text-font text-green-500"
+						>Green</Menubar.Item
+					>
+					<Menubar.Item onclick={() => applyColor('blue')} class="text-font text-blue-500"
+						>Blue</Menubar.Item
+					>
+					<Menubar.Item onclick={() => applyColor('purple')} class="text-font text-purple-500"
+						>Purple</Menubar.Item
+					>
+					<Menubar.Item onclick={() => applyColor('pink')} class="text-font text-pink-500"
+						>Pink</Menubar.Item
+					>
+				</Menubar.Content>
+			</Menubar.Menu>
+			<Menubar.Menu>
+				<Menubar.Trigger><Text /></Menubar.Trigger>
+				<Menubar.Content class="w-fit">
+					<div class="flex items-center justify-center">
+						<Menubar.Item onclick={() => applyAlign('left')} class="text-font"
+							><AlignLeft size={16} /></Menubar.Item
 						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M4 6h16M4 12h16M4 18h7"
-							/>
-						</svg>
+						<Menubar.Item onclick={() => applyAlign('center')} class="text-font"
+							><AlignCenter size={16} /></Menubar.Item
+						>
+						<Menubar.Item onclick={() => applyAlign('right')} class="text-font"
+							><AlignRight size={16} /></Menubar.Item
+						>
+						<Menubar.Item onclick={() => applyAlign('justify')} class="text-font"
+							><AlignJustify size={16} /></Menubar.Item
+						>
 					</div>
-					<ul
-						tabindex="0"
-						class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow"
-					>
-						<li><a href="/editor/add">Open</a></li>
-						<li><button type="submit" class="w-full text-left">Save</button></li>
-					</ul>
-				</div>
-			</div>
-			<div class="navbar-center">
-				<a class="btn btn-ghost text-xl" href="/editor">GlyphNote</a>
-			</div>
-			<div class="navbar-end">
-				<a class="btn btn-ghost" href="/editor">
-					<div class="flex items-center justify-center gap-x-2">
-						<SquarePlus />
-						Add Note
-					</div>
-				</a>
-				<div class="dropdown dropdown-end">
-					<div tabindex="0" role="button" class="btn btn-ghost btn-circle m-1">
-						<CircleUserRound />
-					</div>
-					<ul
-						tabindex="0"
-						class="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm"
-					>
-						<li>
-							<button type="submit" class="w-full text-left" form="signout-form">Sign Out</button>
-						</li>
-					</ul>
-				</div>
-			</div>
-		</div>
-		<div class="bg-base-200 h-full shadow-sm">
-			<ul class="menu menu-horizontal bg-base-200 rounded-box">
-				<li>
-					<input class="input h-8" type="text" name="title" value={note?.title} />
-				</li>
-				<li>
-					<button type="button" popovertarget="popover-2" style="anchor-name:--anchor-2">
-						Colors
-					</button>
-					<ul
-						class="dropdown menu rounded-box bg-base-100 w-52 shadow-sm"
-						popover
-						id="popover-2"
-						style="position-anchor:--anchor-2"
-					>
-						<li><a class="font-bold text-black" onclick={() => applyColor('black')}>black</a></li>
-						<li><a class="font-bold text-gray-500" onclick={() => applyColor('gray')}>gray</a></li>
-						<li><a class="font-bold text-red-500" onclick={() => applyColor('red')}>red</a></li>
-						<li>
-							<a class="font-bold text-orange-500" onclick={() => applyColor('orange')}>orange</a>
-						</li>
-						<li>
-							<a class="font-bold text-yellow-500" onclick={() => applyColor('yellow')}>yellow</a>
-						</li>
-						<li>
-							<a class="font-bold text-green-500" onclick={() => applyColor('green')}>green</a>
-						</li>
-						<li><a class="font-bold text-blue-500" onclick={() => applyColor('blue')}>blue</a></li>
-						<li>
-							<a class="font-bold text-purple-500" onclick={() => applyColor('purple')}>purple</a>
-						</li>
-						<li><a class="font-bold text-pink-500" onclick={() => applyColor('pink')}>pink</a></li>
-					</ul>
-				</li>
-				<li>
-					<button type="button" class="btn btn-ghost btn-sm" onclick={() => applyAlign('left')}>
-						<AlignLeft size={16} />
-					</button>
-				</li>
-				<li>
-					<button type="button" class="btn btn-ghost btn-sm" onclick={() => applyAlign('center')}>
-						<AlignCenter size={16} />
-					</button>
-				</li>
-				<li>
-					<button type="button" class="btn btn-ghost btn-sm" onclick={() => applyAlign('right')}>
-						<AlignRight size={16} />
-					</button>
-				</li>
-				<li>
-					<button type="button" class="btn btn-ghost btn-sm" onclick={() => applyAlign('justify')}>
-						<AlignJustify size={16} />
-					</button>
-				</li>
-			</ul>
-		</div>
+				</Menubar.Content>
+			</Menubar.Menu>
+		</Menubar.Root>
 		<div class="bg-base-100 h-[calc(100vh-109px)]">
 			<div class="h-full">
 				<div class="h-full overflow-hidden">
@@ -368,7 +342,7 @@
 						<div id="left" class="prose preview overflow-auto p-6">
 							{@html marked(preview)}
 						</div>
-						<div id="divider" class="divider divider-horizontal"></div>
+						<Separator orientation="vertical" />
 
 						<textarea
 							id="right"
@@ -384,3 +358,7 @@
 	</div>
 </form>
 <form id="signout-form" action="?/signout" method="POST" class="hidden"></form>
+<form id="editnote-form" action="?/editNote" method="POST" class="hidden">
+	<input type="hidden" name="content" bind:value={content} />
+	<input type="hidden" name="title" bind:value={title} />
+</form>

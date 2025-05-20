@@ -2,25 +2,28 @@
 	import type { Snippet } from 'svelte';
 	import type { LayoutData } from '../add/$types';
 	import { CircleUserRound } from 'lucide-svelte';
-
+	import * as Menubar from '$lib/components/ui/menubar/index.js';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import * as Table from '$lib/components/ui/table/index.js';
+	import { enhance } from '$app/forms';
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 </script>
 
-<div class="navbar bg-base-300 sticky top-0 z-10 w-screen shadow-md">
-	<div class="navbar-start">
-		<a class="btn btn-ghost text-xl" href="/editor">GlyphNote</a>
+<Menubar.Root class="flex h-12 items-center justify-between px-4">
+	<div class="text-2xl">
+		<Button variant="ghost" href="/editor">GlyphNote</Button>
 	</div>
-	<div class="navbar-end">
-		<div class="dropdown dropdown-end">
-			<div tabindex="0" role="button" class="btn btn-ghost btn-circle m-1">
-				<CircleUserRound />
-			</div>
-			<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm">
-				<li>
-					<button type="submit" class="w-full text-left" form="signout-form">Sign Out</button>
-				</li>
-			</ul>
-		</div>
-	</div>
-</div>
+	<Menubar.Menu>
+		<Menubar.Trigger><CircleUserRound /></Menubar.Trigger>
+		<Menubar.Content>
+			<Menubar.Item>
+				<Button variant="ghost" type="submit" class="w-full text-left" form="signout-form"
+					>Sign Out</Button
+				>
+				<form id="signout-form" action="?/signout" method="POST" class="hidden" use:enhance></form>
+			</Menubar.Item>
+		</Menubar.Content>
+	</Menubar.Menu>
+</Menubar.Root>
+
 {@render children()}
