@@ -25,7 +25,11 @@ I encountered challenges trying to move authentication logic from the client to 
 
 ### 2. Real-Time Functionality
 
-Real-time syncing turned out to be more complex than expected. I'm currently working on a better approach using Supabase Realtime and structured state management.
+Real-time syncing turned out to be more complex than expected. I'm currently working on a better approach using api endpoints to provide asynchronous data-fetching.
+
+### 3. Undo/Redo features
+
+Created undo and redo systems using stacks.
 
 ## Tech Stack
 
