@@ -5,10 +5,6 @@ import { fail, redirect, type Actions } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 
 export const actions: Actions = {
-	signout: async ({ locals: { supabase } }) => {
-		await supabase.auth.signOut();
-		throw redirect(302, '/');
-	},
 	deleteNote: async ({ request, locals: { supabase } }) => {
 		const formData = await request.formData();
 		const noteId = formData.get('noteId');
@@ -47,8 +43,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 async function getNotes(userId: string) {
 	try {
-		const data = await db.select().from(notes).where(eq(notes.userid, userId));
-		return data;
+		const notesTable = await db.select().from(notes).where(eq(notes.userid, userId));
+		return notesTable;
 	} catch (err) {
 		console.error('Error fetching notes:', err);
 		return [];

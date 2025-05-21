@@ -10,6 +10,7 @@ GlyphNote is a modern markdown-based note editor built with SvelteKit, Supabase,
 - Styled with TailwindCSS and ShadCN UI
 - Secure server-side logic using form actions
 - Auto Save
+- Undo/Redo Features
 - Markdown rendering with `marked`
 
 ## Why I Built This
@@ -38,7 +39,6 @@ Real-time syncing turned out to be more complex than expected. I'm currently wor
 ## Features to be completed
 
 - Real-time collaboration
-- Working Undo Data Structure
 
 ## Author
 

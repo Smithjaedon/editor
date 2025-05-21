@@ -4,12 +4,28 @@
 	import { CircleUserRound } from 'lucide-svelte';
 	import * as Menubar from '$lib/components/ui/menubar/index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import * as Table from '$lib/components/ui/table/index.js';
-	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
+
+	async function signout() {
+		try {
+			const res = await fetch('/api/signout', {
+				method: 'POST'
+			});
+			if (!res.ok) {
+				const data = await res.json();
+				console.error('failed to signout:', data.error || res.statusText);
+			} else {
+				console.log('successful signout');
+				goto('/');
+			}
+		} catch (err) {
+			console.error('failed signout', err);
+		}
+	}
 </script>
 
-<Menubar.Root class="flex h-12 items-center justify-between px-4">
+<Menubar.Root class="sticky top-0 flex h-12 items-center justify-between px-4">
 	<div class="text-2xl">
 		<Button variant="ghost" href="/editor">GlyphNote</Button>
 	</div>
@@ -17,10 +33,9 @@
 		<Menubar.Trigger><CircleUserRound /></Menubar.Trigger>
 		<Menubar.Content>
 			<Menubar.Item>
-				<Button variant="ghost" type="submit" class="w-full text-left" form="signout-form"
+				<Button variant="ghost" type="submit" class="w-full text-left" onclick={signout}
 					>Sign Out</Button
 				>
-				<form id="signout-form" action="?/signout" method="POST" class="hidden" use:enhance></form>
 			</Menubar.Item>
 		</Menubar.Content>
 	</Menubar.Menu>

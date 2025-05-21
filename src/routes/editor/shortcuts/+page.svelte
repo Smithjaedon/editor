@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { goto } from '$app/navigation';
+
 	import {
 		Card,
 		CardContent,
@@ -51,6 +53,23 @@
 		{ name: 'Purple', color: 'text-purple-500' },
 		{ name: 'Pink', color: 'text-pink-500' }
 	];
+
+	async function signout() {
+		try {
+			const res = await fetch('/api/signout', {
+				method: 'POST'
+			});
+			if (!res.ok) {
+				const data = await res.json();
+				console.error('failed to signout:', data.error || res.statusText);
+			} else {
+				console.log('successful signout');
+				goto('/');
+			}
+		} catch (err) {
+			console.error('failed signout', err);
+		}
+	}
 </script>
 
 <Menubar.Root class="mb-0 flex h-12 items-center justify-between rounded-none bg-neutral-300 px-4">
@@ -69,10 +88,13 @@
 			<Button href="/editor/shortcuts" type="button" variant="ghost" class="w-full"
 				>Shortcuts</Button
 			>
-			<Button variant="ghost" type="submit" class="w-full text-left" form="signout-form"
-				>Sign Out</Button
+			<Button
+				variant="ghost"
+				type="submit"
+				class="w-full text-left"
+				form="signout-form"
+				onclick={signout}>Sign Out</Button
 			>
-			<form id="signout-form" action="?/signout" method="POST" class="hidden"></form>
 		</Menubar.Content>
 	</Menubar.Menu>
 </Menubar.Root>

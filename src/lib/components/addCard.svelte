@@ -22,28 +22,9 @@
 				note.content?.toLowerCase().includes(query.toLowerCase())
 		);
 	}
-
-	async function deleteNote(noteId: string) {
-		try {
-			const res = await fetch('/api/delete-note', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ noteId })
-			});
-
-			if (!res.ok) {
-				const data = await res.json();
-				console.error('failed to delete note', data.error || res.statusText);
-			} else {
-				console.log('successfull deletion');
-			}
-		} catch (err) {
-			console.error('Note Deletion Error:', err);
-		}
-	}
 </script>
 
-<Card.Root class="w-lg">
+<Card.Root class="w-3xl min-w-md">
 	<Card.Header>
 		<Card.Title class="text-center text-xl">Notes</Card.Title>
 		<div class="flex justify-center">
@@ -77,22 +58,32 @@
 									>{note.title || 'Untitled'}</Button
 								>
 							</Table.Cell>
-							<Table.Cell class="text-sm opacity-70"
-								>{note.createdAt?.toLocaleDateString()}</Table.Cell
-							>
-							<Table.Cell class="text-right"
-								>{note.modifiedAt?.toLocaleDateString() ||
-									note.createdAt?.toLocaleDateString()}</Table.Cell
-							>
+							<Table.Cell class="max-w-[150px] truncate text-sm whitespace-nowrap opacity-70">
+								{note.createdAt?.toLocaleString('en-US', {
+									weekday: 'short',
+									month: 'short',
+									day: 'numeric',
+									hour: 'numeric',
+									minute: 'numeric'
+								})}
+							</Table.Cell>
+
+							<Table.Cell class="max-w-[150px] truncate text-right text-sm whitespace-nowrap">
+								{(note.modifiedAt ?? note.createdAt)?.toLocaleString('en-US', {
+									weekday: 'short',
+									month: 'short',
+									day: 'numeric',
+									hour: 'numeric',
+									minute: 'numeric'
+								})}
+							</Table.Cell>
 							<Table.Cell>
-								<Button
-									variant="ghost"
-									type="submit"
-									class="text-error"
-									onclick={() => deleteNote(note.id)}
-								>
-									<Trash2 size={16} />
-								</Button>
+								<form action="?/deleteNote" method="POST" class="inline">
+									<input type="hidden" name="noteId" value={note.id} />
+									<Button variant="ghost" type="submit" class="text-error">
+										<Trash2 size={16} />
+									</Button>
+								</form>
 							</Table.Cell>
 						</Table.Row>
 					{/each}

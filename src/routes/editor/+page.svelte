@@ -16,19 +16,72 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { marked } from 'marked';
 	import { onDestroy, onMount } from 'svelte';
+	import { goto, invalidate } from '$app/navigation';
 
 	let content = $state('');
 	let preview = $state('');
 	let title = $state('');
 
-	const { data } = $props();
-	const { notes } = data;
+	// -------
+	let undo: string[] = [];
+	let redo: string[] = [];
+	let isUndoRedo = false;
+	let timeout: NodeJS.Timeout | null = null;
+	// -------
 
-	function handleSubmit(event: SubmitEvent) {
-		const form = event.target as HTMLFormElement;
-		const submitter = event.submitter as HTMLButtonElement;
-		if (submitter?.type !== 'submit' && !form.action.includes('saveNote')) {
-			event.preventDefault();
+	async function signout() {
+		try {
+			const res = await fetch('/api/signout', {
+				method: 'POST'
+			});
+			if (!res.ok) {
+				const data = await res.json();
+				console.error('failed to signout:', data.error || res.statusText);
+			} else {
+				console.log('successful signout');
+				goto('/');
+			}
+		} catch (err) {
+			console.error('failed signout', err);
+		}
+	}
+
+	function contentChanged() {
+		if (timeout) clearTimeout(timeout);
+		timeout = setTimeout(async () => {
+			if (!isUndoRedo) {
+				if (redo.length > 0) {
+					redo = [];
+				}
+				undo.push(content);
+			}
+		}, 1000);
+	}
+
+	function pushUndoBeforeChange() {
+		if (!isUndoRedo) {
+			if (redo.length > 0) redo = [];
+			undo.push(content);
+		}
+	}
+
+	async function addNotes() {
+		try {
+			const res = await fetch('/api/add-note', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ title, content })
+			});
+			if (!res.ok) {
+				const data = await res.json();
+				console.error('failed to add notes:', data.error || res.statusText);
+			} else {
+				console.log('successful added notes');
+				// refresh the notes list so it's up-to-date when opening
+				await invalidate('/editor/add');
+			}
+		} catch (err) {
+			console.error('failed adding notes:', err);
 		}
 	}
 
@@ -38,7 +91,30 @@
 		renderAlignmentSyntax();
 	});
 
+	function combinedInputs() {
+		isUndoRedo = false;
+		contentChanged();
+	}
+
+	const handleUndo = () => {
+		if (undo.length > 0) {
+			isUndoRedo = true;
+			redo.push(content);
+			content = undo.pop() as string;
+		}
+	};
+
+	const handleRedo = () => {
+		if (redo.length > 0) {
+			isUndoRedo = true;
+			undo.push(content);
+			content = redo.pop() as string;
+		}
+	};
+
 	onMount(() => {
+		if (!content) undo = [''];
+
 		const handleKey = (e: KeyboardEvent) => {
 			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
 				e.preventDefault();
@@ -64,6 +140,14 @@
 				e.preventDefault();
 				applyStart('> ');
 			}
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+				e.preventDefault();
+				handleUndo();
+			}
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && e.shiftKey) {
+				e.preventDefault();
+				handleRedo();
+			}
 		};
 
 		window.addEventListener('keydown', handleKey);
@@ -73,8 +157,10 @@
 	});
 
 	function applyWrapper(wrapper: string) {
-		const txtarea = document.getElementById('right') as HTMLTextAreaElement;
+		const txtarea = document.getElementById('textarea') as HTMLTextAreaElement;
 		if (!content) return;
+
+		pushUndoBeforeChange();
 
 		const start = txtarea.selectionStart;
 		const end = txtarea.selectionEnd;
@@ -102,9 +188,11 @@
 	}
 
 	function applyStart(wrapper: string) {
-		const txtarea = document.getElementById('right') as HTMLTextAreaElement;
+		const txtarea = document.getElementById('textarea') as HTMLTextAreaElement;
 
 		if (!content) return;
+
+		pushUndoBeforeChange();
 
 		const start = txtarea.selectionStart;
 		const end = txtarea.selectionEnd;
@@ -150,9 +238,11 @@
 	}
 
 	function applyColor(color: string) {
-		const txtarea = document.getElementById('right') as HTMLTextAreaElement;
+		const txtarea = document.getElementById('textarea') as HTMLTextAreaElement;
 
 		if (!content) return;
+
+		pushUndoBeforeChange();
 
 		const start = txtarea.selectionStart;
 		const end = txtarea.selectionEnd;
@@ -180,9 +270,11 @@
 	}
 
 	function applyAlign(align: string) {
-		const txtarea = document.getElementById('right') as HTMLTextAreaElement;
+		const txtarea = document.getElementById('textarea') as HTMLTextAreaElement;
 
 		if (!content) return;
+
+		pushUndoBeforeChange();
 
 		const start = txtarea.selectionStart;
 		const end = txtarea.selectionEnd;
@@ -208,119 +300,116 @@
 	}
 </script>
 
-<form action="?/saveNote" method="POST" class="h-full" onsubmit={handleSubmit}>
-	<div class="grid grid-rows-[61px_3rem_1fr] gap-0">
-		<Menubar.Root
-			class="mb-0 flex h-12 items-center justify-between rounded-none bg-neutral-300 px-4"
-		>
-			<Menubar.Menu>
-				<Menubar.Trigger><Menu /></Menubar.Trigger>
-				<Menubar.Content>
+<div class="grid grid-rows-[61px_3rem_1fr] gap-0">
+	<Menubar.Root
+		class="mb-0 flex h-12 items-center justify-between rounded-none bg-neutral-300 px-4"
+	>
+		<Menubar.Menu>
+			<Menubar.Trigger><Menu /></Menubar.Trigger>
+			<Menubar.Content>
+				<Menubar.Item>
 					<Button href="/editor/add" variant="ghost" class="w-full">Open Note</Button>
-					<Button type="submit" variant={'ghost'} class="w-full" form="savenote-form"
+				</Menubar.Item>
+				<Menubar.Item>
+					<Button type="submit" variant={'ghost'} class="w-full" onclick={addNotes}
 						>Save Note</Button
 					>
-				</Menubar.Content>
-			</Menubar.Menu>
-			<div class="text-2xl">
-				<Button variant="ghost" href="/editor">GlyphNote</Button>
-			</div>
-			<Menubar.Menu>
-				<Menubar.Trigger><CircleUserRound /></Menubar.Trigger>
-				<Menubar.Content>
-					<Button href="/editor/shortcuts" type="button" variant="ghost" class="w-full"
-						>Shortcuts</Button
+				</Menubar.Item>
+			</Menubar.Content>
+		</Menubar.Menu>
+		<div class="text-2xl">
+			<Button variant="ghost" href="/editor">GlyphNote</Button>
+		</div>
+		<Menubar.Menu>
+			<Menubar.Trigger><CircleUserRound /></Menubar.Trigger>
+			<Menubar.Content>
+				<Button href="/editor/shortcuts" type="button" variant="ghost" class="w-full"
+					>Shortcuts</Button
+				>
+				<Button variant="ghost" type="submit" class="w-full text-left" onclick={signout}
+					>Sign Out</Button
+				>
+			</Menubar.Content>
+		</Menubar.Menu>
+	</Menubar.Root>
+	<Menubar.Root class="mt-0">
+		<Input
+			type="text"
+			name="title"
+			placeholder="title..."
+			class="h-8 max-w-3xs rounded-md"
+			bind:value={title}
+		/>
+		<Menubar.Menu>
+			<Menubar.Trigger><Baseline /></Menubar.Trigger>
+			<Menubar.Content>
+				<Menubar.Item onclick={() => applyColor('black')} class="text-font text-black"
+					>Black</Menubar.Item
+				>
+				<Menubar.Item onclick={() => applyColor('gray')} class="text-font text-gray-500"
+					>Gray</Menubar.Item
+				>
+				<Menubar.Item onclick={() => applyColor('red')} class="text-font text-red-500"
+					>Red</Menubar.Item
+				>
+				<Menubar.Item onclick={() => applyColor('orange')} class="text-font text-orange-500"
+					>Orange</Menubar.Item
+				>
+				<Menubar.Item onclick={() => applyColor('yellow')} class="text-font text-yellow-500"
+					>Yellow</Menubar.Item
+				>
+				<Menubar.Item onclick={() => applyColor('green')} class="text-font text-green-500"
+					>Green</Menubar.Item
+				>
+				<Menubar.Item onclick={() => applyColor('blue')} class="text-font text-blue-500"
+					>Blue</Menubar.Item
+				>
+				<Menubar.Item onclick={() => applyColor('purple')} class="text-font text-purple-500"
+					>Purple</Menubar.Item
+				>
+				<Menubar.Item onclick={() => applyColor('pink')} class="text-font text-pink-500"
+					>Pink</Menubar.Item
+				>
+			</Menubar.Content>
+		</Menubar.Menu>
+		<Menubar.Menu>
+			<Menubar.Trigger><Text /></Menubar.Trigger>
+			<Menubar.Content class="w-fit">
+				<div class="flex items-center justify-center">
+					<Menubar.Item onclick={() => applyAlign('left')} class="text-font"
+						><AlignLeft size={16} /></Menubar.Item
 					>
-					<Button variant="ghost" type="submit" class="w-full text-left" form="signout-form"
-						>Sign Out</Button
+					<Menubar.Item onclick={() => applyAlign('center')} class="text-font"
+						><AlignCenter size={16} /></Menubar.Item
 					>
-					<form id="signout-form" action="?/signout" method="POST" class="hidden"></form>
-				</Menubar.Content>
-			</Menubar.Menu>
-		</Menubar.Root>
-		<Menubar.Root class="mt-0">
-			<Input
-				type="text"
-				name="title"
-				placeholder="title..."
-				class="h-8 max-w-3xs rounded-md"
-				bind:value={title}
-			/>
-			<Menubar.Menu>
-				<Menubar.Trigger><Baseline /></Menubar.Trigger>
-				<Menubar.Content>
-					<Menubar.Item onclick={() => applyColor('black')} class="text-font text-black"
-						>Black</Menubar.Item
+					<Menubar.Item onclick={() => applyAlign('right')} class="text-font"
+						><AlignRight size={16} /></Menubar.Item
 					>
-					<Menubar.Item onclick={() => applyColor('gray')} class="text-font text-gray-500"
-						>Gray</Menubar.Item
+					<Menubar.Item onclick={() => applyAlign('justify')} class="text-font"
+						><AlignJustify size={16} /></Menubar.Item
 					>
-					<Menubar.Item onclick={() => applyColor('red')} class="text-font text-red-500"
-						>Red</Menubar.Item
-					>
-					<Menubar.Item onclick={() => applyColor('orange')} class="text-font text-orange-500"
-						>Orange</Menubar.Item
-					>
-					<Menubar.Item onclick={() => applyColor('yellow')} class="text-font text-yellow-500"
-						>Yellow</Menubar.Item
-					>
-					<Menubar.Item onclick={() => applyColor('green')} class="text-font text-green-500"
-						>Green</Menubar.Item
-					>
-					<Menubar.Item onclick={() => applyColor('blue')} class="text-font text-blue-500"
-						>Blue</Menubar.Item
-					>
-					<Menubar.Item onclick={() => applyColor('purple')} class="text-font text-purple-500"
-						>Purple</Menubar.Item
-					>
-					<Menubar.Item onclick={() => applyColor('pink')} class="text-font text-pink-500"
-						>Pink</Menubar.Item
-					>
-				</Menubar.Content>
-			</Menubar.Menu>
-			<Menubar.Menu>
-				<Menubar.Trigger><Text /></Menubar.Trigger>
-				<Menubar.Content class="w-fit">
-					<div class="flex items-center justify-center">
-						<Menubar.Item onclick={() => applyAlign('left')} class="text-font"
-							><AlignLeft size={16} /></Menubar.Item
-						>
-						<Menubar.Item onclick={() => applyAlign('center')} class="text-font"
-							><AlignCenter size={16} /></Menubar.Item
-						>
-						<Menubar.Item onclick={() => applyAlign('right')} class="text-font"
-							><AlignRight size={16} /></Menubar.Item
-						>
-						<Menubar.Item onclick={() => applyAlign('justify')} class="text-font"
-							><AlignJustify size={16} /></Menubar.Item
-						>
+				</div>
+			</Menubar.Content>
+		</Menubar.Menu>
+	</Menubar.Root>
+	<div class="bg-base-100 h-[calc(100vh-109px)]">
+		<div class="h-full">
+			<div class="h-full overflow-hidden">
+				<div id="window" class="grid h-full grid-cols-[1fr_auto_1fr]">
+					<div id="left" class="prose preview overflow-auto p-6">
+						{@html marked(preview)}
 					</div>
-				</Menubar.Content>
-			</Menubar.Menu>
-		</Menubar.Root>
-		<div class="bg-base-100 h-[calc(100vh-109px)]">
-			<div class="h-full">
-				<div class="h-full overflow-hidden">
-					<div id="window" class="grid h-full grid-cols-[1fr_auto_1fr]">
-						<div id="left" class="prose preview overflow-auto p-6">
-							{@html marked(preview)}
-						</div>
-						<Separator orientation="vertical" />
+					<Separator orientation="vertical" />
 
-						<textarea
-							id="textarea"
-							name="content"
-							bind:value={content}
-							class="textarea textarea-ghost h-full w-full resize-none focus:border-transparent focus:ring-0 focus:outline-none"
-						></textarea>
-					</div>
+					<textarea
+						id="textarea"
+						name="content"
+						bind:value={content}
+						oninput={combinedInputs}
+						class="textarea textarea-ghost h-full w-full resize-none p-6 focus:border-transparent focus:ring-0 focus:outline-none"
+					></textarea>
 				</div>
 			</div>
 		</div>
 	</div>
-</form>
-<form id="signout-form" action="?/signout" method="POST" class="hidden"></form>
-<form id="savenote-form" action="?/saveNote" method="POST" class="hidden">
-	<input type="hidden" name="content" bind:value={content} />
-	<input type="hidden" name="title" bind:value={title} />
-</form>
+</div>
