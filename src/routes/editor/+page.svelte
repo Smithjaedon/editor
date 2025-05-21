@@ -228,6 +228,9 @@
 			<Menubar.Menu>
 				<Menubar.Trigger><CircleUserRound /></Menubar.Trigger>
 				<Menubar.Content>
+					<Button href="/editor/shortcuts" type="button" variant="ghost" class="w-full"
+						>Shortcuts</Button
+					>
 					<Button variant="ghost" type="submit" class="w-full text-left" form="signout-form"
 						>Sign Out</Button
 					>

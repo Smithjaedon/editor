@@ -20,9 +20,37 @@
 	let content = $state('');
 	let preview = $state('');
 	let title = $state('');
+	let timeout: NodeJS.Timeout | null = null;
+	let saving = $state(false);
 
 	const { data } = $props();
 	const { notes, note } = data;
+	const noteId = note?.id;
+
+	function autoSave() {
+		if (timeout) clearTimeout(timeout);
+		saving = true;
+		timeout = setTimeout(async () => {
+			try {
+				const res = await fetch('/api/save-note', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({ noteId, title, content })
+				});
+
+				if (!res.ok) {
+					const data = await res.json();
+					console.error('Failed to save note:', data.error || res.statusText);
+				} else {
+					console.log('Auto-saved successfully');
+				}
+			} catch (err) {
+				console.error('Auto-save error:', err);
+			}
+		}, 1000);
+	}
 
 	function handleSubmit(event: SubmitEvent) {
 		const form = event.target as HTMLFormElement;
@@ -42,8 +70,14 @@
 		renderAlignmentSyntax();
 	}
 
+	function combinedInputs() {
+		updatePreview();
+		autoSave();
+	}
+
 	onMount(() => {
 		content = note?.content as string;
+		title = note?.title as string;
 		updatePreview();
 
 		const handleKey = (e: KeyboardEvent) => {
@@ -265,9 +299,13 @@
 			<div class="text-2xl">
 				<Button variant="ghost" href="/editor">GlyphNote</Button>
 			</div>
+			<p>{saving ? 'Saving...' : 'Saved'}</p>
 			<Menubar.Menu>
 				<Menubar.Trigger><CircleUserRound /></Menubar.Trigger>
 				<Menubar.Content>
+					<Button href="/editor/shortcuts" type="button" variant="ghost" class="w-full"
+						>Shortcuts</Button
+					>
 					<Button variant="ghost" type="submit" class="w-full text-left" form="signout-form"
 						>Sign Out</Button
 					>
@@ -282,6 +320,7 @@
 				placeholder="title..."
 				class="h-8 max-w-3xs rounded-md"
 				bind:value={title}
+				oninput={autoSave}
 			/>
 			<Menubar.Menu>
 				<Menubar.Trigger><Baseline /></Menubar.Trigger>
@@ -348,7 +387,7 @@
 							id="right"
 							name="content"
 							bind:value={content}
-							oninput={updatePreview}
+							oninput={combinedInputs}
 							class="textarea textarea-ghost h-full w-full resize-none focus:border-transparent focus:ring-0 focus:outline-none"
 						></textarea>
 					</div>

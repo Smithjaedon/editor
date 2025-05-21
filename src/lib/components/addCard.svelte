@@ -22,6 +22,25 @@
 				note.content?.toLowerCase().includes(query.toLowerCase())
 		);
 	}
+
+	async function deleteNote(noteId: string) {
+		try {
+			const res = await fetch('/api/delete-note', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ noteId })
+			});
+
+			if (!res.ok) {
+				const data = await res.json();
+				console.error('failed to delete note', data.error || res.statusText);
+			} else {
+				console.log('successfull deletion');
+			}
+		} catch (err) {
+			console.error('Note Deletion Error:', err);
+		}
+	}
 </script>
 
 <Card.Root class="w-lg">
@@ -66,12 +85,14 @@
 									note.createdAt?.toLocaleDateString()}</Table.Cell
 							>
 							<Table.Cell>
-								<form action="?/deleteNote" method="POST" class="inline">
-									<input type="hidden" name="noteId" value={note.id} />
-									<Button variant="ghost" type="submit" class="text-error">
-										<Trash2 size={16} />
-									</Button>
-								</form>
+								<Button
+									variant="ghost"
+									type="submit"
+									class="text-error"
+									onclick={() => deleteNote(note.id)}
+								>
+									<Trash2 size={16} />
+								</Button>
 							</Table.Cell>
 						</Table.Row>
 					{/each}
